@@ -12,7 +12,7 @@ function App() {
     <div className="app">
       <header className="header">
         <div className="header-inner">
-          <h1>Central Intelligence</h1>
+          <h1>Central Garden & Pet Intelligence — AI-Powered Competitive Intelligence Platform</h1>
           <p>Market & Competitor Dashboard</p>
         </div>
       </header>
