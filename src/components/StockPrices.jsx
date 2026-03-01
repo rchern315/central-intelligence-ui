@@ -34,6 +34,16 @@ const PERIOD_MAP = {
   '52W': { range: '1y', interval: '1d' },
 }
 
+function useWindowWidth() {
+  const [width, setWidth] = useState(window.innerWidth)
+  useEffect(() => {
+    const handle = () => setWidth(window.innerWidth)
+    window.addEventListener('resize', handle)
+    return () => window.removeEventListener('resize', handle)
+  }, [])
+  return width
+}
+
 export default function StockPrices({ activeTicker }) {
   const [latest, setLatest] = useState([])
   const [chartData, setChartData] = useState([])
@@ -41,12 +51,14 @@ export default function StockPrices({ activeTicker }) {
   const [loading, setLoading] = useState(true)
   const [chartLoading, setChartLoading] = useState(true)
 
+  const windowWidth = useWindowWidth()
+  const isMobile = windowWidth < 768
+
   const tickers = useMemo(
     () => activeTicker === 'ALL' ? ['CENT', 'CENTA', 'SMG'] : [activeTicker],
     [activeTicker]
   )
 
-  // Fetch latest prices from Supabase for the price cards
   useEffect(() => {
     async function fetchLatest() {
       const { data } = await supabase
@@ -68,7 +80,6 @@ export default function StockPrices({ activeTicker }) {
     fetchLatest()
   }, [tickers])
 
-  // Fetch historical data via Vite proxy (dev) or serverless function (prod)
   const fetchChartData = useCallback(async () => {
     setChartLoading(true)
 
@@ -88,7 +99,6 @@ export default function StockPrices({ activeTicker }) {
               return { ticker, data }
             }
 
-            // Parse Yahoo Finance response directly in dev
             const chart = data?.chart?.result?.[0]
             if (!chart) return { ticker, data: [] }
 
@@ -112,7 +122,6 @@ export default function StockPrices({ activeTicker }) {
 
       const results = await Promise.all(promises)
 
-      // Merge all ticker data by time
       const merged = {}
       results.forEach(({ ticker, data }) => {
         if (!Array.isArray(data)) return
@@ -134,7 +143,6 @@ export default function StockPrices({ activeTicker }) {
     fetchChartData()
   }, [fetchChartData])
 
-  // Calculate 52W high/low for reference lines
   const get52WStats = (ticker) => {
     const prices = chartData.map(d => d[ticker]).filter(Boolean)
     if (!prices.length) return null
@@ -148,7 +156,6 @@ export default function StockPrices({ activeTicker }) {
     <div className="card">
       <h2 className="section-title">Stock Prices</h2>
 
-      {/* Price cards */}
       {loading ? <p className="loading">Loading...</p> : (
         <div className="stock-cards">
           {latest.map(stock => (
@@ -167,7 +174,6 @@ export default function StockPrices({ activeTicker }) {
         </div>
       )}
 
-      {/* Time range filters */}
       <div className="time-range-filters">
         {TIME_RANGES.map(range => (
           <button
@@ -180,7 +186,6 @@ export default function StockPrices({ activeTicker }) {
         ))}
       </div>
 
-      {/* Chart */}
       {chartLoading ? <p className="loading">Loading chart...</p> : (
         <>
           {timeRange === '52W' && tickers.length === 1 && get52WStats(tickers[0]) && (
@@ -190,21 +195,26 @@ export default function StockPrices({ activeTicker }) {
             </div>
           )}
 
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData}>
+          <ResponsiveContainer width="100%" height={isMobile ? 200 : 300}>
+            <LineChart
+              data={chartData}
+              margin={{ top: 5, right: 10, left: isMobile ? -20 : 0, bottom: 5 }}
+            >
               <XAxis
                 dataKey="time"
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: isMobile ? 9 : 11 }}
                 tickFormatter={val => {
                   if (timeRange === '1D' || timeRange === '5D') return val.split(' ')[1] || val
                   return val.slice(5)
                 }}
                 interval="preserveStartEnd"
+                tickCount={isMobile ? 4 : 8}
               />
               <YAxis
                 tick={{ fontSize: 11 }}
                 domain={['auto', 'auto']}
                 tickFormatter={val => `$${val}`}
+                hide={isMobile}
               />
               <Tooltip
                 formatter={(val, name) => [`$${val}`, name]}
