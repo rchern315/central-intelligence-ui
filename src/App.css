@@ -88,3 +88,31 @@ body {
   font-size: 14px;
   padding: 16px 0;
 }
+
+.sentiment-btn {
+  padding: 5px 14px;
+  border-radius: 14px;
+  border: 1px solid #ddd;
+  background: white;
+  color: #555;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sentiment-btn.active {
+  background: #2874a6;
+  color: white;
+}
+
+@media (max-width: 413px) {
+  .filter-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .sentiment-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+}

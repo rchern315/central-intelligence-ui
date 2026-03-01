@@ -7,10 +7,24 @@ const SENTIMENT_COLORS = {
   neutral: { bg: '#f4f6f7', color: '#888', label: '● Neutral' }
 }
 
-const TICKER_COLORS = {
-  CENT: '#1a5276',
-  CENTA: '#2874a6',
-  SMG: '#e67e22'
+const PINNED_COLORS = {
+  CENT: '#006e43',
+  CENTA: '#006e43'
+}
+
+const AUTO_PALETTE = [
+  '#e67e22', '#8e44ad', '#2874a6', '#c0392b', '#16a085',
+  '#d35400', '#1a5276', '#6c3483', '#117a65', '#784212'
+]
+
+const colorCache = {}
+
+function getTickerColor(ticker) {
+  if (PINNED_COLORS[ticker]) return PINNED_COLORS[ticker]
+  if (colorCache[ticker]) return colorCache[ticker]
+  const index = Object.keys(colorCache).length % AUTO_PALETTE.length
+  colorCache[ticker] = AUTO_PALETTE[index]
+  return colorCache[ticker]
 }
 
 export default function NewsFeed({ activeTicker }) {
@@ -53,16 +67,7 @@ export default function NewsFeed({ activeTicker }) {
             <button
               key={s}
               onClick={() => setSentimentFilter(s)}
-              style={{
-                padding: '5px 14px',
-                borderRadius: '14px',
-                border: '1px solid #ddd',
-                background: sentimentFilter === s ? '#2874a6' : 'white',
-                color: sentimentFilter === s ? 'white' : '#555',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
+               className={`sentiment-btn ${sentimentFilter === s ? 'active' : ''}`}
             >
               {s}
             </button>
@@ -103,7 +108,7 @@ export default function NewsFeed({ activeTicker }) {
                         fontSize: '11px',
                         fontWeight: 700,
                         color: 'white',
-                        background: TICKER_COLORS[article.ticker],
+                        background: getTickerColor(article.ticker),
                         padding: '2px 8px',
                         borderRadius: '4px'
                       }}>{article.ticker}</span>

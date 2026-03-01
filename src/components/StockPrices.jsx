@@ -2,10 +2,24 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
-const TICKER_COLORS = {
-  CENT: '#1a5276',
-  CENTA: '#2874a6',
-  SMG: '#e67e22'
+const PINNED_COLORS = {
+  CENT: '#006e43',
+  CENTA: '#006e43'
+}
+
+const AUTO_PALETTE = [
+  '#e67e22', '#8e44ad', '#2874a6', '#c0392b', '#16a085',
+  '#d35400', '#1a5276', '#6c3483', '#117a65', '#784212'
+]
+
+const colorCache = {}
+
+function getTickerColor(ticker) {
+  if (PINNED_COLORS[ticker]) return PINNED_COLORS[ticker]
+  if (colorCache[ticker]) return colorCache[ticker]
+  const index = Object.keys(colorCache).length % AUTO_PALETTE.length
+  colorCache[ticker] = AUTO_PALETTE[index]
+  return colorCache[ticker]
 }
 
 export default function StockPrices({ activeTicker }) {
@@ -66,7 +80,7 @@ export default function StockPrices({ activeTicker }) {
                 padding: '16px 24px',
                 borderRadius: '10px',
                 background: '#f8f9fa',
-                borderLeft: `4px solid ${TICKER_COLORS[stock.ticker]}`
+                borderLeft: `4px solid ${getTickerColor(stock.ticker)}`
               }}>
                 <div style={{ fontSize: '13px', color: '#888', fontWeight: 600 }}>{stock.ticker}</div>
                 <div style={{ fontSize: '26px', fontWeight: 700, color: '#1a1a2e' }}>${stock.price?.toFixed(2)}</div>
@@ -92,7 +106,7 @@ export default function StockPrices({ activeTicker }) {
                   key={ticker}
                   type="monotone"
                   dataKey={ticker}
-                  stroke={TICKER_COLORS[ticker]}
+                  stroke={getTickerColor(ticker)}
                   strokeWidth={2}
                   dot={false}
                 />
