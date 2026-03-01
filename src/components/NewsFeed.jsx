@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../supabaseClient'
 
 const SENTIMENT_COLORS = {
@@ -27,47 +27,81 @@ function getTickerColor(ticker) {
   return colorCache[ticker]
 }
 
+function getDateRange(preset) {
+  const now = new Date()
+  const start = new Date()
+  switch (preset) {
+    case 'week': start.setDate(now.getDate() - 7); break
+    case 'month': start.setMonth(now.getMonth() - 1); break
+    case '3months': start.setMonth(now.getMonth() - 3); break
+    default: start.setMonth(now.getMonth() - 1)
+  }
+  return start.toISOString()
+}
+
+const PAGE_SIZE = 20
+
 export default function NewsFeed({ activeTicker }) {
   const [articles, setArticles] = useState([])
   const [sentimentFilter, setSentimentFilter] = useState('ALL')
+  const [datePreset, setDatePreset] = useState('month')
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [total, setTotal] = useState(0)
 
-  useEffect(() => {
-    fetchArticles()
-  }, [activeTicker])
-
-  async function fetchArticles() {
+  const fetchArticles = useCallback(async (pageNum = 0, reset = false) => {
     setLoading(true)
+
+    const from = pageNum * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+    const since = getDateRange(datePreset)
 
     let query = supabase
       .from('news_articles')
-      .select('*')
+      .select('*', { count: 'exact' })
       .order('pub_date', { ascending: false })
-      .limit(50)
+      .gte('pub_date', since)
+      .range(from, to)
 
-    if (activeTicker !== 'ALL') {
-      query = query.eq('ticker', activeTicker)
-    }
+    if (activeTicker !== 'ALL') query = query.eq('ticker', activeTicker)
+    if (sentimentFilter !== 'ALL') query = query.eq('sentiment', sentimentFilter.toLowerCase())
+    if (search.trim()) query = query.ilike('title', `%${search.trim()}%`)
 
-    const { data } = await query
-    setArticles(data || [])
+    const { data, count } = await query
+    const newArticles = data || []
+
+    setArticles(reset ? newArticles : prev => [...prev, ...newArticles])
+    setTotal(count || 0)
+    setHasMore(from + newArticles.length < (count || 0))
     setLoading(false)
-  }
+  }, [activeTicker, sentimentFilter, datePreset, search])
 
-  const filtered = sentimentFilter === 'ALL'
-    ? articles
-    : articles.filter(a => a.sentiment === sentimentFilter.toLowerCase())
+  useEffect(() => {
+    setPage(0)
+    fetchArticles(0, true)
+  }, [fetchArticles])
+
+  function loadMore() {
+    const nextPage = page + 1
+    setPage(nextPage)
+    fetchArticles(nextPage, false)
+  }
 
   return (
     <div className="card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-        <h2 className="section-title" style={{ marginBottom: 0 }}>News Feed</h2>
-        <div style={{ display: 'flex', gap: '8px' }}>
+
+      <div className="news-header">
+        <h2 className="section-title" style={{ marginBottom: 0 }}>
+          News Feed {total > 0 && <span className="news-count">({total} articles)</span>}
+        </h2>
+        <div className="sentiment-filters">
           {['ALL', 'POSITIVE', 'NEUTRAL', 'NEGATIVE'].map(s => (
             <button
               key={s}
               onClick={() => setSentimentFilter(s)}
-               className={`sentiment-btn ${sentimentFilter === s ? 'active' : ''}`}
+              className={`sentiment-btn ${sentimentFilter === s ? 'active' : ''}`}
             >
               {s}
             </button>
@@ -75,62 +109,80 @@ export default function NewsFeed({ activeTicker }) {
         </div>
       </div>
 
-      {loading ? <p className="loading">Loading...</p> : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {filtered.length === 0 && <p className="loading">No articles found.</p>}
-          {filtered.map(article => {
+      <input
+        type="text"
+        placeholder="Search articles..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        className="search-input"
+      />
+
+      <div className="date-filters">
+        {[
+          { label: 'This Week', value: 'week' },
+          { label: 'This Month', value: 'month' },
+          { label: 'Last 3 Months', value: '3months' }
+        ].map(preset => (
+          <button
+            key={preset.value}
+            onClick={() => setDatePreset(preset.value)}
+            className={`date-btn ${datePreset === preset.value ? 'active' : ''}`}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
+
+      {loading && articles.length === 0 ? (
+        <p className="loading">Loading...</p>
+      ) : (
+        <div className="articles-list">
+          {articles.length === 0 && <p className="loading">No articles found.</p>}
+          {articles.map(article => {
             const sentiment = SENTIMENT_COLORS[article.sentiment] || SENTIMENT_COLORS.neutral
-           return (
-            <a key={article.id}
+            return (
+              <a
+                key={article.id}
                 href={article.link}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ textDecoration: 'none' }}
-            >
-                <div style={{
-                  padding: '16px',
-                  borderRadius: '10px',
-                  background: '#fafafa',
-                  border: '1px solid #eee',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  gap: '16px',
-                  transition: 'box-shadow 0.2s',
-                  cursor: 'pointer'
-                }}
-                  onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'}
-                  onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '6px', alignItems: 'center' }}>
-                      <span style={{
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        color: 'white',
-                        background: getTickerColor(article.ticker),
-                        padding: '2px 8px',
-                        borderRadius: '4px'
-                      }}>{article.ticker}</span>
-                      <span style={{ fontSize: '12px', color: '#aaa' }}>
+              >
+                <div className="article-card">
+                  <div className="article-content">
+                    <div className="article-meta">
+                      <span
+                        className="article-ticker"
+                        style={{ background: getTickerColor(article.ticker) }}
+                      >
+                        {article.ticker}
+                      </span>
+                      <span className="article-date">
                         {article.pub_date ? new Date(article.pub_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
                       </span>
                     </div>
-                    <p style={{ fontSize: '14px', color: '#1a1a2e', fontWeight: 500, lineHeight: 1.5 }}>{article.title}</p>
+                    <p className="article-title">{article.title}</p>
                   </div>
-                  <span style={{
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    padding: '4px 10px',
-                    borderRadius: '12px',
-                    background: sentiment.bg,
-                    color: sentiment.color,
-                    whiteSpace: 'nowrap'
-                  }}>{sentiment.label}</span>
+                  <span
+                    className="sentiment-badge"
+                    style={{ background: sentiment.bg, color: sentiment.color }}
+                  >
+                    {sentiment.label}
+                  </span>
                 </div>
               </a>
             )
           })}
+
+          {hasMore && (
+            <button
+              onClick={loadMore}
+              className="load-more-btn"
+              disabled={loading}
+            >
+              {loading ? 'Loading...' : 'Load More'}
+            </button>
+          )}
         </div>
       )}
     </div>
