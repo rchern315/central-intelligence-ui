@@ -41,7 +41,8 @@ body {
 }
 
 .filter-bar {
-  display: flex;
+    display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 32px;
 }
