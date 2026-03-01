@@ -78,7 +78,7 @@ export default function StockPrices({ activeTicker }) {
       const promises = tickers.map(ticker => {
         const isProd = import.meta.env.PROD
         const url = isProd
-          ? `/api/stock-history.cjs?ticker=${ticker}&range=${timeRange}`
+          ? `/api/stock-history?ticker=${ticker}&range=${timeRange}`
           : `/yahoo-finance/v8/finance/chart/${ticker}?range=${range}&interval=${interval}&includePrePost=false`
 
         return fetch(url, isProd ? {} : { headers: { 'User-Agent': 'Mozilla/5.0' } })
