@@ -1,12 +1,27 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from './supabaseClient'
 import StockPrices from './components/StockPrices'
 import NewsFeed from './components/NewsFeed'
 import './App.css'
 
 function App() {
   const [activeTicker, setActiveTicker] = useState('ALL')
+  const [tickers, setTickers] = useState(['ALL'])
 
-  const tickers = ['ALL', 'CENT', 'CENTA', 'SMG']
+  useEffect(() => {
+    const fetchTickers = async () => {
+      const { data } = await supabase
+        .from('stock_prices')
+        .select('ticker')
+        .order('ticker')
+
+      if (data) {
+        const unique = ['ALL', ...new Set(data.map(r => r.ticker))]
+        setTickers(unique)
+      }
+    }
+    fetchTickers()
+  }, [])
 
   return (
     <div className="app">
@@ -16,7 +31,6 @@ function App() {
           <p>Market & Competitor Dashboard</p>
         </div>
       </header>
-
       <main className="main">
         <div className="filter-bar">
           {tickers.map(ticker => (
@@ -29,7 +43,6 @@ function App() {
             </button>
           ))}
         </div>
-
         <StockPrices activeTicker={activeTicker} />
         <NewsFeed activeTicker={activeTicker} />
       </main>
