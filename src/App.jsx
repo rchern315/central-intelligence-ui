@@ -43,7 +43,7 @@ function App() {
             </button>
           ))}
         </div>
-        <StockPrices activeTicker={activeTicker} />
+        <StockPrices activeTicker={activeTicker} availableTickers={tickers.filter(ticker => ticker !== 'ALL')} />
         <NewsFeed activeTicker={activeTicker} />
       </main>
     </div>
