@@ -44,7 +44,7 @@ function useWindowWidth() {
   return width
 }
 
-export default function StockPrices({ activeTicker }) {
+export default function StockPrices({ activeTicker, availableTickers = [] }) {
   const [latest, setLatest] = useState([])
   const [chartData, setChartData] = useState([])
   const [timeRange, setTimeRange] = useState('1M')
@@ -55,8 +55,8 @@ export default function StockPrices({ activeTicker }) {
   const isMobile = windowWidth < 768
 
   const tickers = useMemo(
-    () => activeTicker === 'ALL' ? ['CENT', 'CENTA', 'SMG'] : [activeTicker],
-    [activeTicker]
+    () => activeTicker === 'ALL' ? availableTickers : [activeTicker],
+    [activeTicker, availableTickers]
   )
 
   useEffect(() => {
