@@ -1,172 +1,47 @@
 # Central Intelligence UI
 
-This repository contains the frontend for the Central Intelligence application.
+The front end for Central Intelligence, a dashboard that tracks market news, article sentiment, and stock prices.
 
-Production site:
+**Live site:** https://central-intelligence-ui.vercel.app/
 
-https://central-intelligence-ui.vercel.app/
+## How it fits together
 
-## Architecture
+Central Intelligence is split into two repos. A separate back-end pipeline (`central-intelligence-dashboard`) runs on a schedule in GitHub Actions. It pulls news from RSS feeds, scores each article's sentiment, fetches stock data, and writes everything to Supabase.
 
-The application uses two active repositories:
-
-### `central-intelligence-dashboard`
-
-Backend data pipeline.
-
-It:
-
-- fetches RSS news
-- scores article sentiment
-- fetches stock data
-- writes processed data to Supabase
-- runs through GitHub Actions
-
-### `central-intelligence-ui`
-
-Frontend application.
-
-It:
-
-- reads articles from Supabase
-- reads stock data from Supabase
-- displays news, filters, sentiment, prices, and charts
-- deploys through Vercel
-
-## Data Flow
+This repo is the React app that reads from Supabase and displays it. It never reads the RSS feeds directly, so if new articles aren't showing up, check the pipeline first.
 
 ```text
-Yahoo Finance / Google News
-            ↓
-central-intelligence-dashboard
-            ↓
-         Supabase
-            ↓
-central-intelligence-ui
-            ↓
-          Vercel
+News feeds + stock data
+          ↓
+Pipeline (GitHub Actions)
+          ↓
+       Supabase
+          ↓
+   This app (Vercel)
 ```
 
-The frontend does not read RSS feeds directly.
+## The main pieces
 
-## News Feed
+- **News feed** (`src/components/NewsFeed.jsx`) reads from the `news_articles` table, newest first. You can filter by ticker, sentiment, and date range, or search titles.
+- **Stock prices** (`src/components/StockPrices.jsx`) shows the stock data the pipeline stores in Supabase.
 
-The news component is:
+## Run it locally
 
-```text
-src/components/NewsFeed.jsx
-```
-
-It reads from the Supabase table:
-
-```text
-news_articles
-```
-
-Articles are ordered by `pub_date` newest-first and can be filtered by:
-
-- ticker
-- sentiment
-- date range
-- title search
-
-If new articles are missing from the UI, check the backend pipeline first:
-
-```text
-central-intelligence-dashboard
-    ↓
-GitHub Actions
-    ↓
-Supabase news_articles
-    ↓
-central-intelligence-ui
-```
-
-## Stock Data
-
-Stock information is displayed by:
-
-```text
-src/components/StockPrices.jsx
-```
-
-Stock data is stored in Supabase by the backend pipeline.
-
-## Environment Variables
-
-The frontend uses public Supabase client settings:
-
-```text
-VITE_SUPABASE_URL
-VITE_SUPABASE_ANON_KEY
-```
-
-An example is provided in:
-
-```text
-.env-example
-```
-
-Never place the Supabase service-role key or Anthropic API key in this frontend repository.
-
-Those server-side secrets belong only in the backend GitHub Actions configuration.
-
-## Local Development
-
-### Windows PowerShell
-
-Clone the repository:
-
-```powershell
+```bash
 git clone https://github.com/rchern315/central-intelligence-ui.git
 cd central-intelligence-ui
-```
-
-Install dependencies:
-
-```powershell
 npm install
 ```
 
-Create a local environment file with:
+Create a `.env` file with your Supabase project URL and public anon key (see `.env-example`):
 
 ```text
 VITE_SUPABASE_URL=your-project-url
 VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-Start the local development server:
+Then run `npm run dev`. To build for production, run `npm run build`.
 
-```powershell
-npm run dev
-```
+Only public client settings belong in this repo. The Supabase service-role key and the AI API key for sentiment scoring live in the pipeline's GitHub Actions secrets, never here.
 
-## Build
-
-Create a production build with:
-
-```powershell
-npm run build
-```
-
-## Deployment
-
-Vercel deploys this repository as the frontend application.
-
-Production:
-
-https://central-intelligence-ui.vercel.app/
-
-## Troubleshooting Missing News
-
-If an article exists in an RSS source but does not appear on the website:
-
-1. Check the `central-intelligence-dashboard` GitHub Actions pipeline.
-2. Confirm the RSS source returned HTTP 200.
-3. Confirm the pipeline found article nodes.
-4. Confirm the article was inserted into Supabase.
-5. Check the `news_articles` table.
-6. Confirm the article's `pub_date` falls within the selected UI date filter.
-7. Refresh the Vercel application.
-
-The frontend does not ingest RSS by itself.
+Vercel deploys this repo automatically.
